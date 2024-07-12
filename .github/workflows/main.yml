@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  schedule:
+  - cron: "0 * * * *"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v4
+      - name: Get Cached Commit ID
+        run: |
+          echo "CACHED_ECOENCHANTS_COMMIT_ID=$(<./COMMIT_ID)" >> "${GITHUB_ENV}"
+      - uses: ./.github/actions/get-commit-id
+        with:
+          repository: Auxilor/EcoEnchants
+          branch: master
+          variable: ECOENCHANTS_COMMIT_ID
+      - name: Update Commit ID
+        if: ${{ env.CACHED_ECOENCHANTS_COMMIT_ID != env.ECOENCHANTS_COMMIT_ID }}
+        run: |
+          echo $ECOENCHANTS_COMMIT_ID > COMMIT_ID
+      - name: Checkout Git Repository
+        if: ${{ env.CACHED_ECOENCHANTS_COMMIT_ID != env.ECOENCHANTS_COMMIT_ID }}
+        uses: actions/checkout@v4
+        with:
+          repository: Auxilor/EcoEnchants
+          path: EcoEnchants
+      - name: Validate Gradle wrapper
+        if: ${{ env.CACHED_ECOENCHANTS_COMMIT_ID != env.ECOENCHANTS_COMMIT_ID }}
+        uses: gradle/actions/wrapper-validation@v3
+      - name: Setup Gradle
+        if: ${{ env.CACHED_ECOENCHANTS_COMMIT_ID != env.ECOENCHANTS_COMMIT_ID }}
+        uses: gradle/actions/setup-gradle@v3
+      - name: Set up JDK
+        if: ${{ env.CACHED_ECOENCHANTS_COMMIT_ID != env.ECOENCHANTS_COMMIT_ID }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Configure Git User Details
+        if: ${{ env.CACHED_ECOENCHANTS_COMMIT_ID != env.ECOENCHANTS_COMMIT_ID }}
+        run: git config --global user.email "actions@github.com" && git config --global user.name "Github Actions"
+      - name: make gradle wrapper executable
+        if: ${{ env.CACHED_ECOENCHANTS_COMMIT_ID != env.ECOENCHANTS_COMMIT_ID }}
+        run: chmod +x ./EcoEnchants/gradlew
+      - name: Build
+        if: ${{ env.CACHED_ECOENCHANTS_COMMIT_ID != env.ECOENCHANTS_COMMIT_ID }}
+        run: |
+          cd EcoEnchants
+          ./gradlew build
+      - name: Pre Push Binary Files
+        if: ${{ env.CACHED_ECOENCHANTS_COMMIT_ID != env.ECOENCHANTS_COMMIT_ID }}
+        run: |
+          mv -f ./EcoEnchants/build/libs/*.jar ./
+          git add .
+          git commit -m "$(cd EcoEnchants && git log -n 1 --format=\"%s\")"
+      - name: Push Binary Files
+        if: ${{ env.CACHED_ECOENCHANTS_COMMIT_ID != env.ECOENCHANTS_COMMIT_ID }}
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
+      
