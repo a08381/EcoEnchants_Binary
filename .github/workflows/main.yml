@@ -55,6 +55,7 @@ jobs:
       - name: Pre Push Binary Files
         if: ${{ env.CACHED_ECOENCHANTS_COMMIT_ID != env.ECOENCHANTS_COMMIT_ID }}
         run: |
+          rm -f ./EcoEnchants-*.jar
           mv -f ./EcoEnchants/build/libs/*.jar ./
           git add .
           git commit -m "$(cd EcoEnchants && git log -n 1 --format=\"%s\")"
